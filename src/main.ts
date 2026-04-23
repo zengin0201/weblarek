@@ -2,16 +2,16 @@ import './scss/styles.scss';
 import { LarekApi } from './components/LarekApi'; 
 import { API_URL, CDN_URL } from './utils/constants';
 import { Api } from './components/base/Api';
-import { ProductsData } from './components/base/models/ProductsData'; 
-import { BasketData } from './components/base/models/BasketData';     
-import { UserData } from './components/base/models/UserData';
+import { ProductsData } from './components/models/ProductsData'; 
+import { BasketData } from './components/models/BasketData';     
+import { UserData } from './components/models/UserData';
 import { apiProducts } from './utils/data';
 import { IProduct, IProductList } from './types';
 
 
 const baseApi = new Api(API_URL);
 
-const api = new LarekApi(CDN_URL, baseApi);
+const api = new LarekApi(baseApi);
 
 const productsModel = new ProductsData();
 const basketModel = new BasketData();
