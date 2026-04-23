@@ -1,4 +1,4 @@
-import { IApi, IOrder, IOrderResult, IProductList } from './types/index';
+import { IApi, IOrder, IOrderResult, IProductList } from '../types';
 
 export interface ILarekApi {
     getProductList: () => Promise<IProductList>;
@@ -6,10 +6,8 @@ export interface ILarekApi {
 }
 
 export class LarekApi implements ILarekApi {
-    readonly cdn: string;
     private _api: IApi;
-    constructor(cdn: string, api: IApi) {
-        this.cdn = cdn;
+    constructor(api: IApi) {
         this._api = api;
     }
     getProductList(): Promise<IProductList> {
