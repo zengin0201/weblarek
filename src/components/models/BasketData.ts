@@ -1,33 +1,39 @@
 import { IProduct } from "../../types";
+import { IEvents } from "../base/Events";
 
 export class BasketData {
-  private _items: IProduct[] = [];
+    protected _items: IProduct[] = [];
 
-  add(product: IProduct): void {
-    this._items.push(product);
-  }
+    constructor(protected events: IEvents) {}
 
-  remove(id: string): void {
-    this._items = this._items.filter((item) => item.id !== id);
-  }
+    add(product: IProduct): void {
+        this._items.push(product);
+        this.events.emit('basket:changed', this._items);
+    }
 
-  clear(): void {
-    this._items = [];
-  }
+    remove(id: string): void {
+        this._items = this._items.filter((item) => item.id !== id);
+        this.events.emit('basket:changed', this._items);
+    }
 
-  getTotal(): number {
-    return this._items.reduce((acc, item) => acc + (item.price || 0), 0);
-  }
+    clear(): void {
+        this._items = [];
+        this.events.emit('basket:changed', this._items);
+    }
 
-  count(): number {
-    return this._items.length;
-  }
+    getTotal(): number {
+        return this._items.reduce((acc, item) => acc + (item.price || 0), 0);
+    }
 
-  contains(id: string): boolean {
-    return this._items.some((item) => item.id === id);
-  }
+    count(): number {
+        return this._items.length;
+    }
 
-  get items(): IProduct[] {
-    return this._items;
-  }
+    contains(id: string): boolean {
+        return this._items.some((item) => item.id === id);
+    }
+
+    get items(): IProduct[] {
+        return this._items;
+    }
 }
