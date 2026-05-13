@@ -8,7 +8,7 @@ import { BasketData } from './components/models/BasketData';
 import { UserData } from './components/models/UserData';
 import { Page } from './components/View/Page';
 import { Modal } from './components/View/Modal';
-import { Card } from './components/View/Card';
+import { CardCatalog, CardPreview, CardBasket } from './components/View/Card';
 import { Basket } from './components/View/Basket';
 import { OrderForm, ContactsForm } from './components/View/OrderForms'; 
 import { Success } from './components/View/Success'; 
@@ -28,13 +28,32 @@ const cardBasketTemplate = ensureElement<HTMLTemplateElement>('#card-basket');
 const orderTemplate = ensureElement<HTMLTemplateElement>('#order');
 const contactsTemplate = ensureElement<HTMLTemplateElement>('#contacts');
 const successTemplate = ensureElement<HTMLTemplateElement>('#success');
+
+
+const basket = new Basket(cloneTemplate(basketTemplate), events);
 const order = new OrderForm(cloneTemplate(orderTemplate), events);
 const contacts = new ContactsForm(cloneTemplate(contactsTemplate), events);
+const success = new Success(cloneTemplate(successTemplate), { onClick: () => modal.close() });
+
+const cardPreview = new CardPreview('card', cloneTemplate(cardPreviewTemplate), {
+    onClick: () => {
+        const item = productsModel.preview;
+        if (item) {
+            if (basketModel.contains(item.id)) {
+                basketModel.remove(item.id);
+            } else {
+                basketModel.add(item); 
+            }
+            modal.close();
+        }
+    }
+});
+
 
 
 events.on('items:changed', () => {
     page.catalog = productsModel.items.map(item => {
-        const card = new Card('card', cloneTemplate(cardCatalogTemplate), {
+        const card = new CardCatalog('card', cloneTemplate(cardCatalogTemplate), {
             onClick: () => events.emit('card:select', item)
         });
         return card.render({
@@ -46,92 +65,78 @@ events.on('items:changed', () => {
     });
 });
 
-events.on('card:select', (item: IProduct) => {
-    const card = new Card('card', cloneTemplate(cardPreviewTemplate), {
-        onClick: () => {
-            if (basketModel.contains(item.id)) {
-                basketModel.remove(item.id);
-                // card.buttonText = 'В корзину';
-            } else {
-                basketModel.add(item); 
-                // card.buttonText = 'Удалить из корзины';
-            }
-            modal.close()
-        }
-    });
 
-    const isAdded = basketModel.contains(item.id);
-    modal.render({
-        content: card.render({
-            title: item.title,
-            image: CDN_URL + item.image,
-            text: item.description,
-            price: item.price,
-            category: item.category,
-            buttonText: isAdded ? 'Удалить из корзины' : 'В корзину'
-        })
-    });
+events.on('card:select', (item: IProduct) => {
+    productsModel.preview = item; 
 });
+
+
+events.on('preview:changed', () => {
+    const item = productsModel.preview;
+    if (item) {
+        const isAdded = basketModel.contains(item.id);
+        modal.render({
+            content: cardPreview.render({
+                title: item.title,
+                image: CDN_URL + item.image,
+                text: item.description,
+                price: item.price,
+                category: item.category,
+                buttonText: isAdded ? 'Удалить из корзины' : 'В корзину'
+            })
+        });
+    }
+});
+
 
 events.on('basket:changed', () => {
     page.counter = basketModel.count();
-});
-
-events.on('basket:open', () => {
-    const basket = new Basket(cloneTemplate(basketTemplate), events);
     
-    const items = basketModel.items.map((item) => {
-        const card = new Card('card', cloneTemplate(cardBasketTemplate), {
+    basket.items = basketModel.items.map((item, index) => {
+        const card = new CardBasket('card', cloneTemplate(cardBasketTemplate), {
             onClick: () => basketModel.remove(item.id)
         });
-        return card.render({ title: item.title, price: item.price });
+        return card.render({ title: item.title, price: item.price, index: index + 1 });
     });
+    basket.total = basketModel.getTotal();
+});
 
-    modal.render({
-        content: basket.render({
-            items,
-            total: basketModel.getTotal()
-        })
-    });
+
+events.on('basket:open', () => {
+    modal.render({ content: basket.render() });
 });
 
 
 events.on('order:open', () => {
-    modal.render({
-        content: order.render({
-            payment: null,
-            address: '',
-            valid: false,
-            errors: ""
-        })
-    });
+    modal.render({ content: order.render() });
 });
-
 
 events.on('order:submit', () => {
-    modal.render({
-        content: contacts.render({
-            email: '',
-            phone: '',
-            valid: false,
-            errors: ""
-        })
-    });
+    modal.render({ content: contacts.render() });
 });
+
 
 events.on(/(^order|^contacts)\..*:change/, (data: { field: keyof IBuyer, value: string }) => {
     userModel.setField(data.field, data.value);
 });
 
 
-events.on('formErrors:changed', (errors: Partial<IBuyer>) => {
-    const { email, phone, address, payment } = errors;
-    order.valid = !payment && !address;
-    order.errors = Object.values({payment, address}).filter(i => !!i).join('; ');
+events.on('buyer:changed', () => {
+    const errors = userModel.validate();
+    const data = userModel.getUserData();
 
-    contacts.valid = !email && !phone;
-    contacts.errors = Object.values({phone, email}).filter(i => !!i).join('; ');
+    order.address = data.address;
+    order.payment = data.payment || '';
+    contacts.email = data.email;
+    contacts.phone = data.phone;
+
+    order.valid = !errors.payment && !errors.address;
+    order.errors = Object.values({payment: errors.payment, address: errors.address}).filter(i => !!i).join('; ');
+
+    contacts.valid = !errors.email && !errors.phone;
+    contacts.errors = Object.values({phone: errors.phone, email: errors.email}).filter(i => !!i).join('; ');
 });
+
 
 events.on('contacts:submit', () => {
     const orderData = {
@@ -142,9 +147,6 @@ events.on('contacts:submit', () => {
 
     api.orderProducts(orderData)
         .then((result) => {
-            const success = new Success(cloneTemplate(successTemplate), {
-                onClick: () => modal.close()
-            });
             basketModel.clear();
             userModel.clear();
             modal.render({
@@ -157,6 +159,7 @@ events.on('contacts:submit', () => {
 
 events.on('modal:open', () => { page.locked = true; });
 events.on('modal:close', () => { page.locked = false; });
+
 
 api.getProductList()
     .then(data => {
