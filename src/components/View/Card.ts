@@ -13,73 +13,102 @@ export interface ICard {
     price: number | null;
     text?: string;
     buttonText?: string;
+    index?: number;
 }
 
-export class Card extends Component<ICard> {
+
+export class Card<T> extends Component<ICard & T> {
     protected _title: HTMLElement;
-    protected _image?: HTMLImageElement;
-    protected _category?: HTMLElement;
     protected _price: HTMLElement;
-    protected _text?: HTMLElement;
-    protected _button?: HTMLButtonElement;
 
-    constructor(protected blockName: string, container: HTMLElement, actions?: ICardActions) {
+    constructor(protected blockName: string, container: HTMLElement) {
         super(container);
-
-        // Используем ensureElement для гарантии, что элементы существуют
         this._title = ensureElement<HTMLElement>(`.${blockName}__title`, container);
         this._price = ensureElement<HTMLElement>(`.${blockName}__price`, container);
-        
-        // Для опциональных элементов указываем as Type
-        this._image = container.querySelector(`.${blockName}__image`) as HTMLImageElement;
-        this._button = container.querySelector(`.${blockName}__button`) as HTMLButtonElement;
-        this._category = container.querySelector(`.${blockName}__category`) as HTMLElement;
-        this._text = container.querySelector(`.${blockName}__text`) as HTMLElement;
-
-        if (actions?.onClick) {
-            if (this._button) {
-                this._button.addEventListener('click', actions.onClick);
-            } else {
-                container.addEventListener('click', actions.onClick);
-            }
-        }
     }
 
     set title(value: string) {
         this.setText(this._title, value);
     }
 
-    set image(value: string) {
-        if (this._image) {
-            this.setImage(this._image, value, this.title);
-        }
-    }
-
     set price(value: number | null) {
         this.setText(this._price, value ? `${value} синапсов` : 'Бесценно');
-        if (this._button && value === null) {
-            this.setDisabled(this._button, true);
-            this.setText(this._button, 'Недоступно');
-        }
+    }
+}
+
+
+export class CardCatalog extends Card<ICard> {
+    protected _image: HTMLImageElement;
+    protected _category: HTMLElement;
+
+    constructor(blockName: string, container: HTMLElement, actions?: ICardActions) {
+        super(blockName, container);
+        this._image = ensureElement<HTMLImageElement>(`.${blockName}__image`, container);
+        this._category = ensureElement<HTMLElement>(`.${blockName}__category`, container);
+
+        if (actions?.onClick) container.addEventListener('click', actions.onClick);
+    }
+
+    set image(value: string) {
+        this.setImage(this._image, value, this.title);
     }
 
     set category(value: string) {
-        if (this._category) {
-            this.setText(this._category, value);
-            const categoryClass = categoryMap[value as keyof typeof categoryMap] || 'card__category_other';
-            this._category.className = `card__category ${categoryClass}`;
+        this.setText(this._category, value);
+        const categoryClass = categoryMap[value as keyof typeof categoryMap] || 'card__category_other';
+        this._category.className = `card__category ${categoryClass}`;
+    }
+}
+
+
+export class CardPreview extends CardCatalog {
+    protected _text: HTMLElement;
+    protected _button: HTMLButtonElement;
+
+    constructor(blockName: string, container: HTMLElement, actions?: ICardActions) {
+        super(blockName, container);
+        this._text = ensureElement<HTMLElement>(`.${blockName}__text`, container);
+        this._button = ensureElement<HTMLButtonElement>(`.${blockName}__button`, container);
+
+        if (actions?.onClick) {
+            container.removeEventListener('click', actions.onClick); // Снимаем клик с контейнера
+            this._button.addEventListener('click', actions.onClick);
         }
     }
 
     set text(value: string) {
-        if (this._text) {
-            this.setText(this._text, value);
-        }
+        this.setText(this._text, value);
     }
 
     set buttonText(value: string) {
-        if (this._button) {
-            this.setText(this._button, value);
+        this.setText(this._button, value);
+    }
+
+    set price(value: number | null) {
+        super.price = value;
+        if (value === null) {
+            this.setDisabled(this._button, true);
+            this.setText(this._button, 'Недоступно');
+        } else {
+            this.setDisabled(this._button, false);
         }
+    }
+}
+
+
+export class CardBasket extends Card<ICard> {
+    protected _button: HTMLButtonElement;
+    protected _index: HTMLElement;
+
+    constructor(blockName: string, container: HTMLElement, actions?: ICardActions) {
+        super(blockName, container);
+        this._button = ensureElement<HTMLButtonElement>(`.basket__item-delete`, container);
+        this._index = ensureElement<HTMLElement>(`.basket__item-index`, container);
+
+        if (actions?.onClick) this._button.addEventListener('click', actions.onClick);
+    }
+
+    set index(value: number) {
+        this.setText(this._index, value);
     }
 }
