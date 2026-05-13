@@ -8,7 +8,7 @@ export class BasketData {
 
     add(product: IProduct): void {
         this._items.push(product);
-        this.events.emit('basket:changed', this._items);
+        this.events.emit('basket:changed');
     }
 
     remove(id: string): void {
