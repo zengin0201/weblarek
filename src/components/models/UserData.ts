@@ -16,8 +16,7 @@ export class UserData {
             this[field as keyof Omit<IBuyer, 'payment'>] = value as string;
         }
 
-        const errors = this.validate();
-        this.events.emit('formErrors:changed', errors);
+        this.events.emit('buyer:changed'); 
     }
 
     validate(): FormErrors {
@@ -34,6 +33,7 @@ export class UserData {
         this.email = '';
         this.phone = '';
         this.payment = null;
+        this.events.emit('buyer:changed');
     }
 
     getUserData(): IBuyer {
