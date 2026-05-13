@@ -3,13 +3,10 @@ import { IEvents } from '../base/Events';
 import { IBuyer } from '../../types';
 import { ensureElement } from '../../utils/utils';
 
-
-
 export interface IFormState {
     valid: boolean;
     errors: string; 
 }
-
 
 abstract class Form<T> extends Component<IFormState & T> {
     protected _submit: HTMLButtonElement;
@@ -48,9 +45,12 @@ abstract class Form<T> extends Component<IFormState & T> {
 
 export class OrderForm extends Form<IBuyer> {
     protected _buttons: HTMLButtonElement[];
+    protected _addressInput: HTMLInputElement;
+
     constructor(container: HTMLFormElement, events: IEvents) {
         super(container, events);
         this._buttons = Array.from(container.querySelectorAll('.button_alt'));
+        this._addressInput = ensureElement<HTMLInputElement>('input[name=address]', container);
 
         this._buttons.forEach(button => {
             button.addEventListener('click', () => {
@@ -67,8 +67,25 @@ export class OrderForm extends Form<IBuyer> {
     }
 
     set address(value: string) {
-        (this.container.elements.namedItem('address') as HTMLInputElement).value = value;
+        this._addressInput.value = value;
     }
 }
 
-export class ContactsForm extends Form<IBuyer> {}
+export class ContactsForm extends Form<IBuyer> {
+    protected _emailInput: HTMLInputElement;
+    protected _phoneInput: HTMLInputElement;
+
+    constructor(container: HTMLFormElement, events: IEvents) {
+        super(container, events);
+        this._emailInput = ensureElement<HTMLInputElement>('input[name=email]', container);
+        this._phoneInput = ensureElement<HTMLInputElement>('input[name=phone]', container);
+    }
+
+    set email(value: string) {
+        this._emailInput.value = value;
+    }
+
+    set phone(value: string) {
+        this._phoneInput.value = value;
+    }
+}
